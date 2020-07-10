@@ -71,6 +71,47 @@ optional arguments:
 python src/get_weather.py -k {key} -o data/raw/phl.historical.weather -u e -l KPHL:9:US -s 2018-10-01 -e 2020-06-25
 ```
 
+### prep_data.py
+
+Utility script to process and combine the USGS and weather data into one dataset. This pairs
+up the two datasets by their timestamps, matching each weather observation with the closest USGS
+observation. Optionally, gaps in the data can be filled in using either LOCF or linear interpolation.
+
+```
+usage: prep_data.py [-h] [--indir INDIR] [--usgs-file USGS_FILE]
+                    [--weather-dir WEATHER_DIR] [--outdir OUTDIR]
+                    [--fill {omit,locf,interpolate}]
+                    [--preprocessed PREPROCESSED]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --indir INDIR, -i INDIR
+                        Input directory for raw data files. Default: './data'
+  --usgs-file USGS_FILE, -usgs USGS_FILE
+                        USGS Water data file. Default:
+                        'nwis.waterdata.usgs.gov.txt'
+  --weather-dir WEATHER_DIR, -wdir WEATHER_DIR
+                        Directory for weather data files. Default:
+                        'phl.historical.weather'
+  --outdir OUTDIR, -o OUTDIR
+                        Output directory. Default: './target'
+  --fill {omit,locf,interpolate}, -f {omit,locf,interpolate}
+                        Method for missing data imputation. Default: 'omit'
+  --preprocessed PREPROCESSED, -p PREPROCESSED
+                        Path to a combined, preprocessed csv file. If
+                        specified, this file will be used to initialize the
+                        combined data rather than calculating it all again
+```
+
+- Example:
+
+```
+python src/prep_data.py -i data/raw -o data/processed -f omit
+Progress: |███████████████████████████████████████████████| 100%
+python src/prep_data.py -i data/raw -o data/processed -f locf -p data/processed/combined_omit.csv
+python src/prep_data.py -i data/raw -o data/processed -f interpolate -p data/processed/combined_omit.csv
+```
+
 <details>
   <summary style='font-size: 18px'>Data</summary>
 
@@ -86,7 +127,7 @@ The dataset I'm using comes from a combination of USGS Water Data provided throu
     - Precipitation
     - Specific conductance
     - Temperature
-  - See data/raw/nwis.waterdata.usgs.gov.txt for the raw dataset
+  - See [data/raw/nwis.waterdata.usgs.gov.txt](data/raw/nwis.waterdata.usgs.gov.txt) for the raw dataset
 - Weather Data from Philadelphia International Airport Station
   - Hourly records dating from 10/01/2018 - 06/25/2020
   - Data includes the following data points, with particular interest in air temperature and UV index
@@ -99,11 +140,17 @@ The dataset I'm using comes from a combination of USGS Water Data provided throu
     - Precipitation
     - Wind speed
     - Wind direction
-  - See data/raw/phl.historical.weather for the raw dataset
+  - See [data/raw/phl.historical.weather](data/raw/phl.historical.weather) for the raw dataset
 
 Additional notes:
 
-- While the USGS Water Data readings fall nicely in 15-minute increments on the hour (at :00, :15, :30, and :45 minutes), the weather data does not. Actually, it doesn't even fall in even increments, as it seems to vary between 15, 30, and 60 minute intervals between successive observations, and the observations never fall on the hour. The data will need some extra preparation to line the two datasets up by their timestamps.
+- While the USGS Water Data readings fall nicely in 15-minute increments on the hour (at :00, :15, :30, and :45 minutes), the weather data does not. Actually, it doesn't even fall in even increments, as it seems to vary between 15, 30, and 60 minute intervals between successive observations, and the observations never fall on the hour. The data needed some extra preparation to align the two datasets up by their timestamps. I chose to do this as follows:
+  - Each weather observation gets paired with the nearest USGS observation
+    - Since the USGS observations are consistently 15 minutes apart, each weather observation will be adjusted by no more than 7.5 minutes in either direction
+    - Since there are no consecutive weather observations less than 15 minutes apart, it will not be possible for multiple weather observations to be paired to the same USGS observation
+  - After pairing up the weather and USGS observations, there will be gaps in the weather data that need to be filled in (see [data/processed/combined_omit.csv](data/processed/combined_omit.csv)). I chose to implement two different methods of data imputation, in case one yields better results:
+    - Last Observation Carried Forward (LOCF) (see [data/processed/combined_locf.csv](data/processed/combined_locf.csv))
+    - Linear interpolation (see [data/processed/combined_interpolate.csv](data/processed/combined_interpolate.csv))
 - It's also worth pointing out that the historical weather data was recorded at Philadelphia International Airport, which is roughly 20 miles southeast of where the Valley Creek Water Station is located. I'm making the (potentially incorrect) assumption that this distance is negligible and that the weather observed at PHL would be the same as the weather observed in Valley Forge.
 </details>
 
@@ -137,4 +184,5 @@ Additional notes:
 - [How to Develop Multivariate Multi-Step Time Series Forecasting Models for Air Pollution](https://machinelearningmastery.com/how-to-develop-machine-learning-models-for-multivariate-multi-step-air-pollution-time-series-forecasting/)
 - [On the Suitability of Long Short-Term Memory Networks for Time Series Forecasting](https://machinelearningmastery.com/suitability-long-short-term-memory-networks-time-series-forecasting/)
 - [How to Convert a Time Series to a Supervised Learning Problem in Python](https://machinelearningmastery.com/convert-time-series-supervised-learning-problem-python/)
+- [Introduction to Missing Data Imputation](https://medium.com/@Cambridge_Spark/tutorial-introduction-to-missing-data-imputation-4912b51c34eb)
 </details>
