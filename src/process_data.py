@@ -2,7 +2,6 @@ import argparse
 import os
 import sys
 import json
-import csv
 import time
 from datetime import date
 from functools import partial
@@ -42,8 +41,8 @@ def parseArgs():
     Parse command line arguments
     '''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--indir',    '-i', default='./data', type=str,
-                        help='Input directory for raw data files. Default: \'./data\'')
+    parser.add_argument('--indir',    '-i', default='./data/raw', type=str,
+                        help='Input directory for raw data files. Default: \'./data/raw\'')
     parser.add_argument('--usgs-file',    '-usgs', default=USGS_WATER_DATA_FILE, type=str,
                         help='USGS Water data file. Default: \'%s\'' % USGS_WATER_DATA_FILE)
     parser.add_argument('--weather-dir',    '-wdir', default=PHL_WEATHER_HISTORY_DIR, type=str,
@@ -170,11 +169,6 @@ def combine_data(usgs_df, weather_df, fill='omit', preprocessed=None):
         return df.fillna(method='ffill').astype(float)
     else:
         return df.astype(float)
-
-
-def save_data(df, t, temp, uv_index):
-    df.loc[t, 'temp'] = temp
-    df.loc[t, 'uv_index'] = uv_index
 
 
 def augment(df, weather_df):
